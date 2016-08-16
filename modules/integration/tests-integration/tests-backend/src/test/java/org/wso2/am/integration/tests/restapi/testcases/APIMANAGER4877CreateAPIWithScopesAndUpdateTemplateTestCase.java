@@ -62,7 +62,7 @@ public class APIMANAGER4877CreateAPIWithScopesAndUpdateTemplateTestCase extends 
         String keyManagerURL = getKeyManagerURLHttp();
 
         //file name of the JSON data file related to the test case
-        String dataFileName = this.getClass().getSimpleName() + ".txt";
+        String dataFileName = this.getClass().getSimpleName() + ".json";
         String dataFilePath = (new File(System.getProperty("user.dir"))).getParent() +
                 RESTAPITestConstants.PATH_SUBSTRING + dataFileName;
         boolean testSuccessStatus = new RESTAPITestUtil().testRestAPI(dataFilePath, gatewayURL, keyManagerURL);

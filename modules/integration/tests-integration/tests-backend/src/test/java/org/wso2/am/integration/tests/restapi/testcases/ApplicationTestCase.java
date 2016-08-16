@@ -62,7 +62,7 @@ public class ApplicationTestCase extends APIMIntegrationBaseTest {
         String keyManagerURL = getKeyManagerURLHttp();
 
         //file name of the JSON data file related to : Application handling test case
-        String dataFileName = "ApplicationTestCase.txt";
+        String dataFileName = "ApplicationTestCase.json";
         String dataFilePath = (new File(System.getProperty("user.dir"))).getParent() +
                 RESTAPITestConstants.PATH_SUBSTRING + dataFileName;
         boolean testSuccessStatus = new RESTAPITestUtil().testRestAPI(dataFilePath, gatewayURL, keyManagerURL);

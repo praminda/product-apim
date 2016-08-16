@@ -62,7 +62,7 @@ public class EnvironmentTestCase extends APIMIntegrationBaseTest {
         String keyManagerURL = getKeyManagerURLHttp();
 
         //file name of the JSON data file related to : Environment retrieval test case
-        String dataFileName = "EnvironmentTestCase.txt";
+        String dataFileName = "EnvironmentTestCase.json";
         String dataFilePath = (new File(System.getProperty("user.dir"))).getParent() +
                 RESTAPITestConstants.PATH_SUBSTRING + dataFileName;
         boolean testSuccessStatus = new RESTAPITestUtil().testRestAPI(dataFilePath, gatewayURL, keyManagerURL);

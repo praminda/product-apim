@@ -70,7 +70,7 @@ public class TagTestCase extends APIMIntegrationBaseTest {
         String keyManagerURL = getKeyManagerURLHttp();
 
         //file name of the JSON data file related to : Tag retrieving test case
-        String dataFileName = "TagTestCase.txt";
+        String dataFileName = "TagTestCase.json";
         String dataFilePath = (new File(System.getProperty("user.dir"))).getParent() +
                 RESTAPITestConstants.PATH_SUBSTRING + dataFileName;
         boolean testSuccessStatus = new RESTAPITestUtil().testRestAPI(dataFilePath, gatewayURL, keyManagerURL);
