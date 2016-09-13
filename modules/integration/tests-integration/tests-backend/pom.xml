@@ -435,5 +435,10 @@ under the License.
             <groupId>org.wso2.carbon.analytics</groupId>
             <artifactId>org.wso2.carbon.analytics.spark.stub</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.swagger</groupId>
+            <artifactId>swagger-java-client</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
 </project>
