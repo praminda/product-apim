@@ -178,14 +178,14 @@ public class RestAPIAuthClient {
      * @throws APIManagerIntegrationTestException if an error occurs while
      *                                            generating access token
      */
-    public String generateOAuthAccessToken(String[] scopes, char[] username, char[] password)
+    public String generateOAuthAccessToken(String[] scopes, String username, String password)
             throws APIManagerIntegrationTestException {
 
         try {
             RestAPITokenRequest tokenRequest = new RestAPITokenRequest();
             tokenRequest.setGrantType(GRANT_TYPE_PASSWORD);
-            tokenRequest.setUserName(String.valueOf(username));
-            tokenRequest.setPassword(String.valueOf(password));
+            tokenRequest.setUserName(username);
+            tokenRequest.setPassword(password);
 
             for (String scope : scopes) {
                 tokenRequest.addScope(scope);
@@ -366,7 +366,7 @@ public class RestAPIAuthClient {
      * @return initialized Api Client
      * @throws APIManagerIntegrationTestException
      */
-    public ApiClient getStoreApiClient(String[] scopes, char[] username, char[] password)
+    public ApiClient getStoreApiClient(String[] scopes, String username, String password)
             throws APIManagerIntegrationTestException {
         String basePath = this.gatewayURL + "/api/am/store/v0.10";
         ApiClient storeClient = getApiClient(basePath, scopes, username, password);
@@ -385,7 +385,7 @@ public class RestAPIAuthClient {
      * @return initialized Api Client
      * @throws APIManagerIntegrationTestException
      */
-    public ApiClient getPublisherApiClient(String[] scopes, char[] username, char[] password)
+    public ApiClient getPublisherApiClient(String[] scopes, String username, String password)
             throws APIManagerIntegrationTestException {
         String basePath = this.gatewayURL + "/api/am/publisher/v0.10";
         ApiClient storeClient = getApiClient(basePath, scopes, username, password);
@@ -397,15 +397,15 @@ public class RestAPIAuthClient {
      * @return swagger api client initialized for provided configurations
      * @throws APIManagerIntegrationTestException
      */
-    private ApiClient getApiClient(String basePath, String[] scopes, char[] username, char[] password)
+    private ApiClient getApiClient(String basePath, String[] scopes, String username, String password)
             throws APIManagerIntegrationTestException {
         ApiClient storeClient = new ApiClient();
         storeClient.setBasePath(basePath);
         createOAuthApplication();
 
         if (username == null || password == null) {
-            username = "admin".toCharArray();
-            password = "admin".toCharArray();
+            username = "admin";
+            password = "admin";
         }
         String accessToken = generateOAuthAccessToken(scopes, username, password);
         storeClient.setAccessToken(accessToken);
