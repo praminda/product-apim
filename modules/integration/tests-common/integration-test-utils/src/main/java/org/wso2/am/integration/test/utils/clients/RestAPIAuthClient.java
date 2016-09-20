@@ -24,15 +24,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.wso2.am.integration.test.utils.APIManagerIntegrationTestException;
 import org.wso2.am.integration.test.utils.base.APIMIntegrationConstants;
-import org.wso2.am.integration.test.utils.bean.APIMURLBean;
-import org.wso2.am.integration.test.utils.bean.RestAPIRegistrationRequest;
-import org.wso2.am.integration.test.utils.bean.RestAPIRegistrationResponse;
-import org.wso2.am.integration.test.utils.bean.RestAPITokenRequest;
+import org.wso2.am.integration.test.utils.bean.*;
 import org.wso2.carbon.automation.engine.context.AutomationContext;
 import org.wso2.carbon.automation.engine.context.TestUserMode;
 import org.wso2.carbon.automation.engine.exceptions.AutomationFrameworkException;
 import org.wso2.carbon.automation.test.utils.http.client.HttpRequestUtil;
-import org.wso2.carbon.automation.test.utils.http.client.HttpResponse;
 
 import javax.xml.xpath.XPathExpressionException;
 import java.io.UnsupportedEncodingException;
@@ -59,7 +55,6 @@ public class RestAPIAuthClient {
     private static final String CONTENT_TYPE_JSON = "application/json";
     private static final String BASIC_AUTH_HEADER = "admin:admin";
     private static final String TOKEN_ENDPOINT_SUFFIX = "token";
-    private static final String ACCESS_TOKEN_KEY = "access_token";
     private static final String CHARSET = "UTF-8";
     private static final String GRANT_TYPE_PASSWORD = "password";
     private static final long TOKEN_EXPIRY_MIN_LIMIT = 600;
@@ -221,15 +216,16 @@ public class RestAPIAuthClient {
             HashMap<String, String> headers = new HashMap<String, String>();
 
             headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientToken);
-            HttpResponse tokenGenerateResponse = HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers);
-            JSONObject tokenGenDataJson = new JSONObject(tokenGenerateResponse.getData());
-            String accessToken = tokenGenDataJson.get(ACCESS_TOKEN_KEY).toString();
+            JSONObject tokenGenDataJson = new JSONObject(HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers));
+            RestAPITokenResponse response = new RestAPITokenResponse();
+            response.setResponse(tokenGenDataJson);
+            String accessToken = response.getAccessToken();
 
             if (accessToken != null) {
 
                 // refresh expiring access token
-                String refreshToken = tokenGenDataJson.get("refresh_token").toString();
-                Long expiresIn = Long.parseLong(tokenGenDataJson.get("expires_in").toString());
+                String refreshToken = response.getRefreshToken();
+                Long expiresIn = response.getValidityTime();
                 String validatedToken = refreshExpiringToken(expiresIn, refreshToken, scopes, encodedClientToken);
 
                 return validatedToken == null ? accessToken : validatedToken;
@@ -279,9 +275,10 @@ public class RestAPIAuthClient {
                 HashMap<String, String> headers = new HashMap<String, String>();
 
                 headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientToken);
-                HttpResponse tokenGenerateResponse = HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers);
-                JSONObject tokenGenDataJson = new JSONObject(tokenGenerateResponse.getData());
-                refreshedToken = tokenGenDataJson.get(ACCESS_TOKEN_KEY).toString();
+                JSONObject tokenGenDataJson = new JSONObject(HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers));
+                RestAPITokenResponse response = new RestAPITokenResponse();
+                response.setResponse(tokenGenDataJson);
+                refreshedToken = response.getAccessToken();
             }
         } catch (MalformedURLException malformedE) {
             throw new APIManagerIntegrationTestException("Error in getting the URL of token endpoint.", malformedE);
