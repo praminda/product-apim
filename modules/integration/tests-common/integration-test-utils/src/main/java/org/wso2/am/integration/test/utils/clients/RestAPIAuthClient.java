@@ -20,15 +20,13 @@ package org.wso2.am.integration.test.utils.clients;
 import io.swagger.client.ApiClient;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.wso2.am.integration.test.utils.APIManagerIntegrationTestException;
-import org.wso2.am.integration.test.utils.base.APIMIntegrationBaseTest;
 import org.wso2.am.integration.test.utils.base.APIMIntegrationConstants;
 import org.wso2.am.integration.test.utils.bean.APIMURLBean;
 import org.wso2.am.integration.test.utils.bean.RestAPIRegistrationRequest;
+import org.wso2.am.integration.test.utils.bean.RestAPIRegistrationResponse;
 import org.wso2.am.integration.test.utils.bean.RestAPITokenRequest;
 import org.wso2.carbon.automation.engine.context.AutomationContext;
 import org.wso2.carbon.automation.engine.context.TestUserMode;
@@ -53,7 +51,6 @@ import java.util.Map;
 public class RestAPIAuthClient {
     private String gatewayNURL;
     private String gatewayURL;
-    private String encodedClientAuthToken;
 
     //constants
     private static final String DCR_PATH = "client-registration/v0.10/register";
@@ -112,15 +109,14 @@ public class RestAPIAuthClient {
      * <p>Users of this client is required to create OAuth application
      * by calling this method before using the client</p>
      *
+     * @return {@link RestAPIRegistrationResponse} with OAuth application information
      * @throws APIManagerIntegrationTestException
      */
-    public void createOAuthApplication() throws APIManagerIntegrationTestException {
+    public RestAPIRegistrationResponse createOAuthApplication() throws APIManagerIntegrationTestException {
 
         //use a random name for client to avoid conflicts in application(s)
         String randomClientName = RandomStringUtils.randomAlphabetic(5);
         Map<String, String> headers = new HashMap<String, String>();
-        String clientID;
-        String clientSecret;
         RestAPIRegistrationRequest registrationRequest = new RestAPIRegistrationRequest();
         registrationRequest.setCallbackURL("www.google.lk");
         registrationRequest.setClientName(randomClientName);
@@ -137,10 +133,10 @@ public class RestAPIAuthClient {
 
             JSONObject jsonResponse = new JSONObject(
                     HttpRequestUtil.doPost(new URL(gatewayURL + DCR_PATH), requestBody, headers).getData());
-            clientID = jsonResponse.get("clientId").toString();
-            clientSecret = jsonResponse.get("clientSecret").toString();
+            RestAPIRegistrationResponse response = new RestAPIRegistrationResponse();
+            response.setResponse(jsonResponse);
 
-            setEncodedClientAuthToken(clientID, clientSecret);
+            return response;
         } catch (UnsupportedEncodingException unsupportedE) {
             throw new APIManagerIntegrationTestException(
                     "Header encoding was unsuccessful while registering application.", unsupportedE);
@@ -154,14 +150,14 @@ public class RestAPIAuthClient {
     }
 
     /**
-     * Calculate and set the Base64 encoded value of clientID and clientSecret
+     * Calculate the Base64 encoded value of clientID and clientSecret
      *
      * @throws UnsupportedEncodingException
      */
-    private void setEncodedClientAuthToken(String clientID, String clientSecret) throws UnsupportedEncodingException {
+    private String getEncodedCredentials(String clientID, String clientSecret) throws UnsupportedEncodingException {
         String tokenBeforeEncode = clientID + ":" + clientSecret;
         byte[] encodedBytes = Base64.encodeBase64(tokenBeforeEncode.getBytes(CHARSET));
-        encodedClientAuthToken = new String(encodedBytes, CHARSET);
+        return new String(encodedBytes, CHARSET);
     }
 
     /**
@@ -170,6 +166,7 @@ public class RestAPIAuthClient {
      * is less that <code>TOKEN_EXPIRY_MIN_LIMIT</code></p>
      * This is done inorder to prevent token from expiring before test case completes
      *
+     * @param client   OAuth application details
      * @param scopes   scopes required to create the token
      * @param username username of the user who need the access token
      * @param password password of the user who need the access token
@@ -178,8 +175,8 @@ public class RestAPIAuthClient {
      * @throws APIManagerIntegrationTestException if an error occurs while
      *                                            generating access token
      */
-    public String generateOAuthAccessToken(String[] scopes, String username, String password)
-            throws APIManagerIntegrationTestException {
+    public String generateOAuthAccessToken(RestAPIRegistrationResponse client, String[] scopes, String username,
+            String password) throws APIManagerIntegrationTestException {
 
         try {
             RestAPITokenRequest tokenRequest = new RestAPITokenRequest();
@@ -192,10 +189,11 @@ public class RestAPIAuthClient {
             }
 
             String messageBody = buildTokenAPIRequest(tokenRequest);
+            String encodedClientToken = getEncodedCredentials(client.getClientID(), client.getClientSecret());
             URL tokenEndpointURL = new URL(gatewayNURL + TOKEN_ENDPOINT_SUFFIX);
             HashMap<String, String> headers = new HashMap<String, String>();
 
-            headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientAuthToken);
+            headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientToken);
             HttpResponse tokenGenerateResponse = HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers);
             JSONObject tokenGenDataJson = new JSONObject(tokenGenerateResponse.getData());
             String accessToken = tokenGenDataJson.get(ACCESS_TOKEN_KEY).toString();
@@ -205,7 +203,7 @@ public class RestAPIAuthClient {
                 // refresh expiring access token
                 String refreshToken = tokenGenDataJson.get("refresh_token").toString();
                 Long expiresIn = Long.parseLong(tokenGenDataJson.get("expires_in").toString());
-                String validatedToken = refreshExpiringToken(expiresIn, refreshToken, scopes);
+                String validatedToken = refreshExpiringToken(expiresIn, refreshToken, scopes, encodedClientToken);
 
                 return validatedToken == null ? accessToken : validatedToken;
             }
@@ -215,6 +213,8 @@ public class RestAPIAuthClient {
             throw new APIManagerIntegrationTestException("Error sending the request to token endpoint.", automationE);
         } catch (JSONException jsonE) {
             throw new APIManagerIntegrationTestException("Error parsing JSON content from token endpoint.", jsonE);
+        } catch (UnsupportedEncodingException unsupE) {
+            throw new APIManagerIntegrationTestException("Error encoding client credentials", unsupE);
         }
         return null;
     }
@@ -224,19 +224,20 @@ public class RestAPIAuthClient {
      * a defined time and refresh the access token to get longer expiry
      * period. This is to allow test cases to have maximum use of the token.
      *
-     * @param expireTime   expire time of current token
-     * @param refreshToken refresh token for current access token
-     * @param scopes       scopes required with refreshed access token
+     * @param expireTime         expire time of current token
+     * @param refreshToken       refresh token for current access token
+     * @param scopes             scopes required with refreshed access token
+     * @param encodedClientToken encoded client credentials of OAth application
      * @return refreshed accessed token if refreshed or <code>null</code>
      * if not refreshed
      * @throws APIManagerIntegrationTestException
      */
-    private String refreshExpiringToken(long expireTime, String refreshToken, String[] scopes)
-            throws APIManagerIntegrationTestException {
+    private String refreshExpiringToken(long expireTime, String refreshToken, String[] scopes,
+            String encodedClientToken) throws APIManagerIntegrationTestException {
         String refreshedToken = null;
         try {
 
-            //check if token expires in short period of time
+            //check if token expires in short period of time and refresh the token if expiring period is short
             if (expireTime <= TOKEN_EXPIRY_MIN_LIMIT) {
                 RestAPITokenRequest refreshRequest = new RestAPITokenRequest();
                 refreshRequest.setGrantType(GRANT_TYPE_PASSWORD);
@@ -250,7 +251,7 @@ public class RestAPIAuthClient {
                 URL tokenEndpointURL = new URL(gatewayNURL + TOKEN_ENDPOINT_SUFFIX);
                 HashMap<String, String> headers = new HashMap<String, String>();
 
-                headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientAuthToken);
+                headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientToken);
                 HttpResponse tokenGenerateResponse = HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers);
                 JSONObject tokenGenDataJson = new JSONObject(tokenGenerateResponse.getData());
                 refreshedToken = tokenGenDataJson.get(ACCESS_TOKEN_KEY).toString();
@@ -394,6 +395,12 @@ public class RestAPIAuthClient {
     }
 
     /**
+     * Retrieves an initialized {@link ApiClient}
+     *
+     * @param basePath base path of the API
+     * @param scopes   scopes required for communicating with the API
+     * @param username for which user the access token should be generated
+     * @param password password for user <code>username</code>
      * @return swagger api client initialized for provided configurations
      * @throws APIManagerIntegrationTestException
      */
@@ -401,13 +408,13 @@ public class RestAPIAuthClient {
             throws APIManagerIntegrationTestException {
         ApiClient storeClient = new ApiClient();
         storeClient.setBasePath(basePath);
-        createOAuthApplication();
+        RestAPIRegistrationResponse response = createOAuthApplication();
 
         if (username == null || password == null) {
             username = "admin";
             password = "admin";
         }
-        String accessToken = generateOAuthAccessToken(scopes, username, password);
+        String accessToken = generateOAuthAccessToken(response, scopes, username, password);
         storeClient.setAccessToken(accessToken);
 
         return storeClient;
