@@ -102,6 +102,44 @@ public class RestAPIAuthClient {
     }
 
     /**
+     * Retrieves swagger {@link ApiClient} for store api initialized with an access token
+     *
+     * @param scopes   scopes required for creating the access token
+     * @param username username of the user who need the access token.
+     *                 Default value of admin will be used if null is provided
+     * @param password password of the user who need the access token.
+     *                 Default value of admin will be used if null is provided
+     * @return initialized Api Client
+     * @throws APIManagerIntegrationTestException
+     */
+    public ApiClient getStoreApiClient(String[] scopes, String username, String password)
+            throws APIManagerIntegrationTestException {
+        String basePath = this.gatewayURL + "/api/am/store/v0.10";
+        ApiClient storeClient = getApiClient(basePath, scopes, username, password);
+
+        return storeClient;
+    }
+
+    /**
+     * Retrieves swagger {@link ApiClient} for publisher api initialized with an access token
+     *
+     * @param scopes   scopes required for creating the access token
+     * @param username username of the user who need the access token.
+     *                 Default value of admin will be used if null is provided
+     * @param password password of the user who need the access token.
+     *                 Default value of admin will be used if null is provided
+     * @return initialized Api Client
+     * @throws APIManagerIntegrationTestException
+     */
+    public ApiClient getPublisherApiClient(String[] scopes, String username, String password)
+            throws APIManagerIntegrationTestException {
+        String basePath = this.gatewayURL + "/api/am/publisher/v0.10";
+        ApiClient storeClient = getApiClient(basePath, scopes, username, password);
+
+        return storeClient;
+    }
+
+    /**
      * Create OAuth application and retrieve <code>client id</code>
      * and <code>client secret</code>
      * Created application will have a randomly generated name to avoid
@@ -147,17 +185,6 @@ public class RestAPIAuthClient {
         } catch (JSONException jsonE) {
             throw new APIManagerIntegrationTestException("Error in parsing JSON to get consumer key/secret.", jsonE);
         }
-    }
-
-    /**
-     * Calculate the Base64 encoded value of clientID and clientSecret
-     *
-     * @throws UnsupportedEncodingException
-     */
-    private String getEncodedCredentials(String clientID, String clientSecret) throws UnsupportedEncodingException {
-        String tokenBeforeEncode = clientID + ":" + clientSecret;
-        byte[] encodedBytes = Base64.encodeBase64(tokenBeforeEncode.getBytes(CHARSET));
-        return new String(encodedBytes, CHARSET);
     }
 
     /**
@@ -357,44 +384,6 @@ public class RestAPIAuthClient {
     }
 
     /**
-     * Retrieves swagger {@link ApiClient} for store api initialized with an access token
-     *
-     * @param scopes   scopes required for creating the access token
-     * @param username username of the user who need the access token.
-     *                 Default value of admin will be used if null is provided
-     * @param password password of the user who need the access token.
-     *                 Default value of admin will be used if null is provided
-     * @return initialized Api Client
-     * @throws APIManagerIntegrationTestException
-     */
-    public ApiClient getStoreApiClient(String[] scopes, String username, String password)
-            throws APIManagerIntegrationTestException {
-        String basePath = this.gatewayURL + "/api/am/store/v0.10";
-        ApiClient storeClient = getApiClient(basePath, scopes, username, password);
-
-        return storeClient;
-    }
-
-    /**
-     * Retrieves swagger {@link ApiClient} for publisher api initialized with an access token
-     *
-     * @param scopes   scopes required for creating the access token
-     * @param username username of the user who need the access token.
-     *                 Default value of admin will be used if null is provided
-     * @param password password of the user who need the access token.
-     *                 Default value of admin will be used if null is provided
-     * @return initialized Api Client
-     * @throws APIManagerIntegrationTestException
-     */
-    public ApiClient getPublisherApiClient(String[] scopes, String username, String password)
-            throws APIManagerIntegrationTestException {
-        String basePath = this.gatewayURL + "/api/am/publisher/v0.10";
-        ApiClient storeClient = getApiClient(basePath, scopes, username, password);
-
-        return storeClient;
-    }
-
-    /**
      * Retrieves an initialized {@link ApiClient}
      *
      * @param basePath base path of the API
@@ -418,6 +407,17 @@ public class RestAPIAuthClient {
         storeClient.setAccessToken(accessToken);
 
         return storeClient;
+    }
+
+    /**
+     * Calculate the Base64 encoded value of clientID and clientSecret
+     *
+     * @throws UnsupportedEncodingException
+     */
+    private String getEncodedCredentials(String clientID, String clientSecret) throws UnsupportedEncodingException {
+        String tokenBeforeEncode = clientID + ":" + clientSecret;
+        byte[] encodedBytes = Base64.encodeBase64(tokenBeforeEncode.getBytes(CHARSET));
+        return new String(encodedBytes, CHARSET);
     }
 
 }
