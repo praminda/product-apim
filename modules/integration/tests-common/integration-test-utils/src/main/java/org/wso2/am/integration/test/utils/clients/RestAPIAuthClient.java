@@ -41,8 +41,6 @@ import java.util.Map;
 /**
  * Util client to provide an interface to authenticate and manage
  * access tokens for API Manager REST API
- * <p>Users of this client is expected to call {@link #createOAuthApplication()}
- * after initializing an instance of this client</p>
  */
 public class RestAPIAuthClient {
     private String gatewayNURL;
@@ -53,7 +51,7 @@ public class RestAPIAuthClient {
     private static final String AUTHORIZATION_KEY = "Authorization";
     private static final String CONTENT_TYPE_KEY = "Content-Type";
     private static final String CONTENT_TYPE_JSON = "application/json";
-    private static final String BASIC_AUTH_HEADER = "admin:admin";
+    private static final String ADMIN_CREDENTIALS_VALUE = "admin:admin";
     private static final String TOKEN_ENDPOINT_SUFFIX = "token";
     private static final String CHARSET = "UTF-8";
     private static final String GRANT_TYPE_PASSWORD = "password";
@@ -75,11 +73,6 @@ public class RestAPIAuthClient {
         public static final String REFRESH_TOKEN = "refresh_token";
     }
 
-    public RestAPIAuthClient(String gatewayNURL, String gatewayURL) {
-        this.gatewayNURL = gatewayNURL;
-        this.gatewayURL = gatewayURL;
-    }
-
     public RestAPIAuthClient(TestUserMode userMode) throws XPathExpressionException {
         APIMURLBean gatewayUrlsMgt, gatewayUrlsWrk;
         AutomationContext gatewayContextMgt, gatewayContextWrk;
@@ -99,18 +92,14 @@ public class RestAPIAuthClient {
     /**
      * Retrieves swagger {@link ApiClient} for store api initialized with an access token
      *
-     * @param scopes   scopes required for creating the access token
-     * @param username username of the user who need the access token.
-     *                 Default value of admin will be used if null is provided
-     * @param password password of the user who need the access token.
-     *                 Default value of admin will be used if null is provided
+     * @param configBean client configuration details
      * @return initialized Api Client
      * @throws APIManagerIntegrationTestException
      */
-    public ApiClient getStoreApiClient(String[] scopes, String username, String password)
+    public ApiClient getStoreApiClient(RestAPIClientBean configBean)
             throws APIManagerIntegrationTestException {
         String basePath = this.gatewayURL + "/api/am/store/v0.10";
-        ApiClient storeClient = getApiClient(basePath, scopes, username, password);
+        ApiClient storeClient = getApiClient(basePath, configBean);
 
         return storeClient;
     }
@@ -118,20 +107,16 @@ public class RestAPIAuthClient {
     /**
      * Retrieves swagger {@link ApiClient} for publisher api initialized with an access token
      *
-     * @param scopes   scopes required for creating the access token
-     * @param username username of the user who need the access token.
-     *                 Default value of admin will be used if null is provided
-     * @param password password of the user who need the access token.
-     *                 Default value of admin will be used if null is provided
+     * @param configBean client configuration details
      * @return initialized Api Client
      * @throws APIManagerIntegrationTestException
      */
-    public ApiClient getPublisherApiClient(String[] scopes, String username, String password)
+    public ApiClient getPublisherApiClient(RestAPIClientBean configBean)
             throws APIManagerIntegrationTestException {
         String basePath = this.gatewayURL + "/api/am/publisher/v0.10";
-        ApiClient storeClient = getApiClient(basePath, scopes, username, password);
+        ApiClient publisherClient = getApiClient(basePath, configBean);
 
-        return storeClient;
+        return publisherClient;
     }
 
     /**
@@ -145,21 +130,25 @@ public class RestAPIAuthClient {
      * @return {@link RestAPIRegistrationResponse} with OAuth application information
      * @throws APIManagerIntegrationTestException
      */
-    public RestAPIRegistrationResponse createOAuthApplication() throws APIManagerIntegrationTestException {
+    public RestAPIRegistrationResponse createOAuthApplication(String clientName) throws APIManagerIntegrationTestException {
 
-        //use a random name for client to avoid conflicts in application(s)
-        String randomClientName = RandomStringUtils.randomAlphabetic(5);
+        if (clientName == null) {
+
+            //use a random name for client to avoid conflicts in application(s)
+            clientName = RandomStringUtils.randomAlphabetic(5);
+        }
+
         Map<String, String> headers = new HashMap<String, String>();
         RestAPIRegistrationRequest registrationRequest = new RestAPIRegistrationRequest();
-        registrationRequest.setCallbackURL("www.google.lk");
-        registrationRequest.setClientName(randomClientName);
+        registrationRequest.setCallbackURL("www.wso2.com");
+        registrationRequest.setClientName(clientName);
         registrationRequest.setTokenScope("Production");
         registrationRequest.setOwner("admin");
         registrationRequest.setSupportedGrantTypes("password refresh_token");
         registrationRequest.setSaaSApp(true);
 
         try {
-            byte[] encodedBytes = Base64.encodeBase64(BASIC_AUTH_HEADER.getBytes(CHARSET));
+            byte[] encodedBytes = Base64.encodeBase64(ADMIN_CREDENTIALS_VALUE.getBytes(CHARSET));
             headers.put(AUTHORIZATION_KEY, "Basic " + new String(encodedBytes, CHARSET));
             headers.put(CONTENT_TYPE_KEY, CONTENT_TYPE_JSON);
             String requestBody = buildAppRegistrationRequest(registrationRequest).toString();
@@ -216,7 +205,7 @@ public class RestAPIAuthClient {
             HashMap<String, String> headers = new HashMap<String, String>();
 
             headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientToken);
-            JSONObject tokenGenDataJson = new JSONObject(HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers));
+            JSONObject tokenGenDataJson = new JSONObject(HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers).getData());
             RestAPITokenResponse response = new RestAPITokenResponse();
             response.setResponse(tokenGenDataJson);
             String accessToken = response.getAccessToken();
@@ -384,23 +373,18 @@ public class RestAPIAuthClient {
      * Retrieves an initialized {@link ApiClient}
      *
      * @param basePath base path of the API
-     * @param scopes   scopes required for communicating with the API
-     * @param username for which user the access token should be generated
-     * @param password password for user <code>username</code>
+     *                 @param configBean client configuration details
      * @return swagger api client initialized for provided configurations
      * @throws APIManagerIntegrationTestException
      */
-    private ApiClient getApiClient(String basePath, String[] scopes, String username, String password)
+    private ApiClient getApiClient(String basePath, RestAPIClientBean configBean)
             throws APIManagerIntegrationTestException {
         ApiClient storeClient = new ApiClient();
         storeClient.setBasePath(basePath);
-        RestAPIRegistrationResponse response = createOAuthApplication();
+        RestAPIRegistrationResponse response = createOAuthApplication(configBean.getClientName());
 
-        if (username == null || password == null) {
-            username = "admin";
-            password = "admin";
-        }
-        String accessToken = generateOAuthAccessToken(response, scopes, username, password);
+        String accessToken = generateOAuthAccessToken(response, configBean.getScopes(), configBean.getUsername(),
+                configBean.getPassword());
         storeClient.setAccessToken(accessToken);
 
         return storeClient;

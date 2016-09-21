@@ -37,13 +37,13 @@ public class RestAPIRegistrationResponse {
     private String clientName;
     private String clientID;
     private String clientSecret;
-    private JSONObject jsonString = null;
+    private String jsonString = null;
 
     public String getCallbackURL() {
         return callbackURL;
     }
 
-    public JSONObject getJsonString() {
+    public String getJsonString() {
         return jsonString;
     }
 
@@ -61,7 +61,7 @@ public class RestAPIRegistrationResponse {
 
     public void setResponse(JSONObject response) throws JSONException {
         callbackURL = response.getString(JSONResponseKeys.CALLBACK_URL);
-        jsonString = response.getJSONObject(JSONResponseKeys.JSON_STRING);
+        jsonString = response.getString(JSONResponseKeys.JSON_STRING);
         clientName = response.getString(JSONResponseKeys.CLIENT_NAME);
         clientID =  response.getString(JSONResponseKeys.CLIENT_ID);
         clientSecret = response.getString(JSONResponseKeys.CLIENT_SECRET);
