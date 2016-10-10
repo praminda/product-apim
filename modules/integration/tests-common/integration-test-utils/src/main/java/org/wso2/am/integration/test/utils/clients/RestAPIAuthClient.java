@@ -17,7 +17,6 @@
 
 package org.wso2.am.integration.test.utils.clients;
 
-import io.swagger.client.ApiClient;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.RandomStringUtils;
 import org.json.JSONException;
@@ -90,31 +89,43 @@ public class RestAPIAuthClient {
     }
 
     /**
-     * Retrieves swagger {@link ApiClient} for store api initialized with an access token
+     * Retrieves swagger {@link org.wso2.am.integration.test.utils.clients.store.ApiClient} for store api initialized with an access token
      *
      * @param configBean client configuration details
      * @return initialized Api Client
      * @throws APIManagerIntegrationTestException
      */
-    public ApiClient getStoreApiClient(RestAPIClientBean configBean)
+    public org.wso2.am.integration.test.utils.clients.store.ApiClient getStoreApiClient(RestAPIClientBean configBean)
             throws APIManagerIntegrationTestException {
         String basePath = this.gatewayURL + "/api/am/store/v0.10";
-        ApiClient storeClient = getApiClient(basePath, configBean);
+        org.wso2.am.integration.test.utils.clients.store.ApiClient storeClient = new org.wso2.am.integration.test.utils.clients.store.ApiClient();
+        storeClient.setBasePath(basePath);
+        RestAPIRegistrationResponse response = createOAuthApplication(configBean.getClientName());
+
+        String accessToken = generateOAuthAccessToken(response, configBean.getScopes(), configBean.getUsername(),
+                configBean.getPassword());
+        storeClient.setAccessToken(accessToken);
 
         return storeClient;
     }
 
     /**
-     * Retrieves swagger {@link ApiClient} for publisher api initialized with an access token
+     * Retrieves swagger {@link org.wso2.am.integration.test.utils.clients.publisher.ApiClient} for publisher api initialized with an access token
      *
      * @param configBean client configuration details
      * @return initialized Api Client
      * @throws APIManagerIntegrationTestException
      */
-    public ApiClient getPublisherApiClient(RestAPIClientBean configBean)
-            throws APIManagerIntegrationTestException {
+    public org.wso2.am.integration.test.utils.clients.publisher.ApiClient getPublisherApiClient(
+            RestAPIClientBean configBean) throws APIManagerIntegrationTestException {
         String basePath = this.gatewayURL + "/api/am/publisher/v0.10";
-        ApiClient publisherClient = getApiClient(basePath, configBean);
+        org.wso2.am.integration.test.utils.clients.publisher.ApiClient publisherClient = new org.wso2.am.integration.test.utils.clients.publisher.ApiClient();
+        publisherClient.setBasePath(basePath);
+        RestAPIRegistrationResponse response = createOAuthApplication(configBean.getClientName());
+
+        String accessToken = generateOAuthAccessToken(response, configBean.getScopes(), configBean.getUsername(),
+                configBean.getPassword());
+        publisherClient.setAccessToken(accessToken);
 
         return publisherClient;
     }
@@ -130,7 +141,8 @@ public class RestAPIAuthClient {
      * @return {@link RestAPIRegistrationResponse} with OAuth application information
      * @throws APIManagerIntegrationTestException
      */
-    public RestAPIRegistrationResponse createOAuthApplication(String clientName) throws APIManagerIntegrationTestException {
+    public RestAPIRegistrationResponse createOAuthApplication(String clientName)
+            throws APIManagerIntegrationTestException {
 
         if (clientName == null) {
 
@@ -205,7 +217,8 @@ public class RestAPIAuthClient {
             HashMap<String, String> headers = new HashMap<String, String>();
 
             headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientToken);
-            JSONObject tokenGenDataJson = new JSONObject(HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers).getData());
+            JSONObject tokenGenDataJson = new JSONObject(
+                    HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers).getData());
             RestAPITokenResponse response = new RestAPITokenResponse();
             response.setResponse(tokenGenDataJson);
             String accessToken = response.getAccessToken();
@@ -264,7 +277,8 @@ public class RestAPIAuthClient {
                 HashMap<String, String> headers = new HashMap<String, String>();
 
                 headers.put(AUTHORIZATION_KEY, "Basic " + encodedClientToken);
-                JSONObject tokenGenDataJson = new JSONObject(HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers));
+                JSONObject tokenGenDataJson = new JSONObject(
+                        HttpRequestUtil.doPost(tokenEndpointURL, messageBody, headers));
                 RestAPITokenResponse response = new RestAPITokenResponse();
                 response.setResponse(tokenGenDataJson);
                 refreshedToken = response.getAccessToken();
@@ -367,27 +381,6 @@ public class RestAPIAuthClient {
         }
 
         return scopeString.toString();
-    }
-
-    /**
-     * Retrieves an initialized {@link ApiClient}
-     *
-     * @param basePath base path of the API
-     *                 @param configBean client configuration details
-     * @return swagger api client initialized for provided configurations
-     * @throws APIManagerIntegrationTestException
-     */
-    private ApiClient getApiClient(String basePath, RestAPIClientBean configBean)
-            throws APIManagerIntegrationTestException {
-        ApiClient storeClient = new ApiClient();
-        storeClient.setBasePath(basePath);
-        RestAPIRegistrationResponse response = createOAuthApplication(configBean.getClientName());
-
-        String accessToken = generateOAuthAccessToken(response, configBean.getScopes(), configBean.getUsername(),
-                configBean.getPassword());
-        storeClient.setAccessToken(accessToken);
-
-        return storeClient;
     }
 
     /**
